@@ -299,7 +299,7 @@ void Scr_MySQL_Fetch_Rows_f()
             rows = mysql_fetch_row(mysql_res); // this will only give us one result.
             for (int i = 0; i < col_count; i++) {
                 Plugin_Scr_AddString(rows[i]);
-                Plugin_Scr_AddArrayKey(keyArray[i]);
+                Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
             }
         }
         else
@@ -308,7 +308,7 @@ void Scr_MySQL_Fetch_Rows_f()
                 Plugin_Scr_MakeArray();
                 for (int i = 0; i < col_count; i++) {
                     Plugin_Scr_AddString(rows[i]);
-                    Plugin_Scr_AddArrayKey(keyArray[i]);
+                    Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
                 }
                 Plugin_Scr_AddArray();
             }
