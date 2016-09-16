@@ -254,15 +254,16 @@ void Scr_MySQL_Num_Fields_f()
 }
 
 /* =================================================================
-* URL
-    http://dev.mysql.com/doc/refman/5.7/en/mysql-fetch-row.html
 * Description
-    Retrieves the next row of a result set.
+    Retrieves all rows from a query .
 * Return Value(s)
-    A MYSQL_ROW structure for the next row. NULL if there are no more rows to retrieve or if an error occurred.
+    A MYSQL_ROW structure from a query. It will return a different
+    array depending on the amount of rows. one row and it will return
+    a single dimensioned array using the column names as the array
+    keys. If it is more than one row then it will return a 2D array
+    the first dimension will be a numerical iterator through the rows
+    and the second dimension will be the columns names as array keys.
    ================================================================= */
-/* Todo: must be tweaked. I think, key for arrays will be great. */
-/* Todo: double check that. I didn't worked with mysql before */
 void Scr_MySQL_Fetch_Rows_f()
 {
 	if (Plugin_Scr_GetNumParam() > 0)
