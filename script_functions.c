@@ -280,7 +280,7 @@ void Scr_MySQL_Fetch_Rows_f()
 	}
 
 	unsigned int col_count = mysql_num_fields(mysql_res);
-	MYSQL_ROW row = mysql_num_rows(mysql_res);
+	int row = mysql_num_rows(mysql_res);
 
 	if(row != 0)
 	{
@@ -296,6 +296,7 @@ void Scr_MySQL_Fetch_Rows_f()
             count++;
         }
 
+        MYSQL_ROW rows;
         if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
         {
             rows = mysql_fetch_row(mysql_res); // this will only give us one result.
