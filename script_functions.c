@@ -1,6 +1,10 @@
 /* I don't want, but I have to! T-Max */
 #include "../pinc.h"
+#ifndef WIN32
+#include "mysql/unix/include/mysql.h"
+#else
 #include "mysql/windows/include/mysql.h"
+#endif
 #include "stdio.h"
 
 extern MYSQL mysql;
