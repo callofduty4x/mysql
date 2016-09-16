@@ -279,25 +279,44 @@ void Scr_MySQL_Fetch_Rows_f()
 	}
 
 	unsigned int col_count = mysql_num_fields(mysql_res);
-	MYSQL_ROW row = mysql_fetch_row(mysql_res);
+	MYSQL_ROW row = mysql_num_rows(mysql_res);
 
-	if(row != NULL)
+	if(row != 0)
 	{
-		Plugin_Scr_MakeArray();
+        // do this no matter what.
+        Plugin_Scr_MakeArray();
 
-		int i;
-		for(i = 0; i < col_count; ++i)
-		{
-			/* A little help here? I don't actually understand data representation
-			   Integer must be integer, string - string, float - float */
-			MYSQL_FIELD *field = mysql_fetch_field(mysql_res);
-			if(field == NULL)
-			{
-				Scr_MySQL_Error("Houston, we got a problem: unnamed column!");
-				return;
-			}
-			Plugin_Scr_AddString(row[i]);
-			Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
-		}
+        int count = 0, keyArray[col_count];
+        MYSQL_FIELD* fieldArray[col_count];
+        while((field = mysql_fetch_field(mysql_res))) {
+            fieldArray[count] = field;
+            keyArray[count] = field->name; // for future reference.
+            Plugin_Scr_AllocString(keyArray[count]);
+            count++;
+        }
+
+        if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
+        {
+            rows = mysql_fetch_row(mysql_res); // this will only give us one result.
+            for (int i = 0; i < col_count; i++) {
+                Plugin_Scr_AddString(rows[i]);
+                Plugin_Scr_AddArrayKey(keyArray[i]);
+            }
+        }
+        else
+        {
+            while((rows = mysql_fetch_row(mysql_res))){ // this will give us lots of results
+                Plugin_Scr_MakeArray();
+                for (int i = 0; i < col_count; i++) {
+                    Plugin_Scr_AddString(rows[i]);
+                    Plugin_Scr_AddArrayKey(keyArray[i]);
+                }
+                Plugin_Scr_AddArray();
+            }
+        }
 	}
+    else
+    {
+        Plugin_Scr_AddUndefined(); // No GSC. Behave
+    }
 }
