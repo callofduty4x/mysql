@@ -1,6 +1,9 @@
 #include "../pinc.h"
-
+#ifndef WIN32
+#include "mysql/unix/include/mysql.h"
+#else
 #include "mysql/windows/include/mysql.h"
+#endif
 #include "script_functions.h"
 
 #include "stdio.h"
