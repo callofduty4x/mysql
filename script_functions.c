@@ -62,9 +62,9 @@ void Scr_MySQL_Real_Connect_f()
 
 	// IF port is defined the use port ELSEIF cvar port is defined ELSE use default
 	int newPort;
-	if( port != NULL )
+	if( port < 1 )
 		newPort = g_mysql_port->integer;
-	else if ( g_mysql_port->integer != NULL )
+	else if ( g_mysql_port->integer < 1 )
 		newPort = port;
 	else
 		newPort = 3306;
@@ -112,7 +112,7 @@ void Scr_MySQL_Close_f()
 	}
 
 	/* Closes the MySQL Handle Connection */
-	Com_DPrintf("Closing CID: %d\n", mysql); // t
+	Plugin_DPrintf("Closing CID: %d\n", mysql); // t
 	mysql_close(&mysql);
 }
 
@@ -287,7 +287,8 @@ void Scr_MySQL_Fetch_Rows_f()
         // do this no matter what.
         Plugin_Scr_MakeArray();
 
-        int count = 0, keyArray[col_count];
+        int count = 0;
+        char* keyArray[col_count];
         MYSQL_FIELD* field;
         while((field = mysql_fetch_field(mysql_res))) {
             keyArray[count] = field->name; // for future reference.
