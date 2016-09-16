@@ -267,7 +267,7 @@ void Scr_MySQL_Fetch_Rows_f()
 {
 	if (Plugin_Scr_GetNumParam() > 0)
 	{
-		Plugin_Scr_Error("Usage: mysql_fetch_row();");
+		Plugin_Scr_Error("Usage: mysql_fetch_rows();");
 		return;
 	}
 
