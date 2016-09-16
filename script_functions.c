@@ -38,38 +38,55 @@ static void Scr_MySQL_Error(const char* fmt, ...)
    ================================================================= */
 void Scr_MySQL_Real_Connect_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	// I want this. You may have more than one db to query against
+	char* host = Plugin_Scr_GetString(0);
+	char* user = Plugin_Scr_GetString(1);
+	char* pass = Plugin_Scr_GetString(2);
+	char* db = Plugin_Scr_GetString(3);
+	int port = Plugin_Scr_GetInt(4);
+
+	if (Plugin_Scr_GetNumParam() != 3)
 	{
-		Plugin_Scr_Error("Usage: mysql_real_connect();");
+		Plugin_Scr_Error("Usage: mysql_real_connect(host, user, pass, port*);\n*port not required");
 		return;
 	}
 
 #ifndef WIN32
 	/* On *Unix based systems, using "localhost" instead of 127.0.0.1
 	 * causes a unix socket error, we replace it */
-	if (strcmp(g_mysql_host->string, "localhost") == 0)
+	if (strcmp(host, "localhost") == 0)
 	{
-		Plugin_Cvar_SetString(g_mysql_host, "127.0.0.1");
+		Plugin_Cvar_SetString(host, "127.0.0.1");
 	}
 #endif
 
-	MYSQL* result = mysql_real_connect(&mysql, g_mysql_host->string,
-	                                   g_mysql_user->string,
-	                                   g_mysql_password->string,
-	                                   g_mysql_database->string,
-	                                   g_mysql_port->integer, NULL, 0);
+	// IF port is defined the use port ELSEIF cvar port is defined ELSE use default
+	int newPort;
+	if( port != NULL )
+		newPort = g_mysql_port->integer;
+	else if ( g_mysql_port->integer != NULL )
+		newPort = port;
+	else
+		newPort = 3306;
+
+
+	MYSQL* result = mysql_real_connect(&mysql, host,
+									   user,
+	                                   pass,
+	                                   db,
+									   newPort, NULL, 0);
 
 	/* We don't want to crash the server, so we have a check to return nothing to prevent that */
 	if (result == NULL)
 	{
 		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&mysql),
 		                 mysql_error(&mysql));
+		Plugin_Scr_AddUndefined(); // make sure we return undefined so GSC does not shit it's self.
 		return;
 	}
 
-	// What is this? Remove it if necessary.
 	/* Would you like to reconnect if connection is dropped? */
-	qboolean reconnect = qtrue;
+	qboolean reconnect = qtrue; // allows the database to reconnect on a new query etc.
 
 	/* Check to see if the mySQL server connection has dropped */
 	mysql_options(&mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -95,7 +112,7 @@ void Scr_MySQL_Close_f()
 	}
 
 	/* Closes the MySQL Handle Connection */
-	//Com_DPrintf("Closing CID: %d\n", mysql);
+	Com_DPrintf("Closing CID: %d\n", mysql); // t
 	mysql_close(&mysql);
 }
 
@@ -246,7 +263,7 @@ void Scr_MySQL_Num_Fields_f()
    ================================================================= */
 /* Todo: must be tweaked. I think, key for arrays will be great. */
 /* Todo: double check that. I didn't worked with mysql before */
-void Scr_MySQL_Fetch_Row_f()
+void Scr_MySQL_Fetch_Rows_f()
 {
 	if (Plugin_Scr_GetNumParam() > 0)
 	{
