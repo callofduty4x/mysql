@@ -5,11 +5,7 @@
 
 extern MYSQL mysql;
 extern MYSQL_RES* mysql_res;
-extern cvar_t *g_mysql_host;
 extern cvar_t *g_mysql_port;
-extern cvar_t *g_mysql_user;
-extern cvar_t *g_mysql_password;
-extern cvar_t *g_mysql_database;
 
 static void Scr_MySQL_Error(const char* fmt, ...)
 {
@@ -288,11 +284,12 @@ void Scr_MySQL_Fetch_Rows_f()
         Plugin_Scr_MakeArray();
 
         int count = 0;
+        int keyArrayIndex[col_count];
         char* keyArray[col_count];
         MYSQL_FIELD* field;
         while((field = mysql_fetch_field(mysql_res))) {
             keyArray[count] = field->name; // for future reference.
-            Plugin_Scr_AllocString(keyArray[count]);
+            keyArrayIndex[count] = Plugin_Scr_AllocString(keyArray[count]);
             count++;
         }
 
