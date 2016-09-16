@@ -1,6 +1,6 @@
 #include "../pinc.h"
 
-#include "mysql/include/mysql.h"
+#include "mysql/windows/include/mysql.h"
 #include "script_functions.h"
 
 #include "stdio.h"
@@ -23,7 +23,7 @@ PCL void OnInfoRequest(pluginInfo_t *info)
 {
 	char description[1024] = {'\0'};
 
-	sprintf(description, PLUGIN_DESCR, mysql_get_client_version());
+	sprintf(description, PLUGIN_DESCR, (char *)mysql_get_client_version());
 	description[sizeof(description) - 1] = '\0';
 
 	info->handlerVersion.major = PLUGIN_HANDLER_VERSION_MAJOR;
@@ -53,8 +53,7 @@ PCL int OnInit()
 
 	if (mysql_init(&mysql) == NULL)
 	{
-		Plugin_PrintError("MySQL plugin initialization failed: (%d) %s\n",
-		                   mysql_errno(&mysql), mysql_error(&mysql));
+		Plugin_PrintError("MySQL plugin initialization failed: (%d) %s\n", mysql_errno(&mysql), mysql_error(&mysql));
 	}
 }
 
