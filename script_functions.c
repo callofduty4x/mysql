@@ -288,9 +288,8 @@ void Scr_MySQL_Fetch_Rows_f()
         Plugin_Scr_MakeArray();
 
         int count = 0, keyArray[col_count];
-        MYSQL_FIELD* fieldArray[col_count];
+        MYSQL_FIELD* field;
         while((field = mysql_fetch_field(mysql_res))) {
-            fieldArray[count] = field;
             keyArray[count] = field->name; // for future reference.
             Plugin_Scr_AllocString(keyArray[count]);
             count++;
