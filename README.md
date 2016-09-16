@@ -9,11 +9,21 @@ CoD4X MySQL support for GSC.
 # Script Docs 
 ### MySQL Related Functions
 
+#### CVARS
+##### `mysql_port`
+You can use `mysql_port` to define a default port to connect to. `mysql_real_connect` will still prioritise its own argument
+over the CVAR so leaving `mysql_real_connect`'s port empty will cause it to fall back to `mysql_port`. If `mysql_port` and
+`mysql_real_connect`'s ports are both empty then by default fall back onto mysqls default port `3306`
+
+Usage example: `set mysql_port 3306`
+
 #### `mysql_real_connect()`
 
 Connects to a database
 
-Usage example `db = mysql_real_connect(host, user, pass, db, port)`
+Usage example `db = mysql_real_connect(host, user, pass, db, *port)`
+
+####### Note: *the port pram is optional
 
 ###### Use 127.0.0.1 on unix, and the default port for mysql is 3306.
 

@@ -12,7 +12,7 @@
 #define PLUGIN_NAME "CoD4X MySQL Plugin"
 #define PLUGIN_DESCR PLUGIN_NAME" allows you to query information from " \
                     "mysql database. MySQL version: %s"
-#define PLUGIN_SHORT PLUGIN_NAME" by T-Max, Sharpienero, MichaelHillcox"
+#define PLUGIN_SHORT PLUGIN_NAME" by Sharpienero, MichaelHillcox, T-Max (T-Maxxx)"
 
 MYSQL mysql;
 MYSQL_RES* mysql_res;
