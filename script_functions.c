@@ -32,6 +32,28 @@ static void Scr_MySQL_Error(const char* fmt, ...)
 
 	Plugin_Scr_Error(buffer);
 }
+
+/* =================================================================
+ * Checks if function called after connection and query.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static void Scr_MySQL_CheckCall(int handle)
+{
+	/* Attempt to call without connection */
+	if (g_mysql_reserved[handle] == qfalse)
+	{
+		Plugin_Scr_Error("'mysql_real_connection' must be called before.");
+		return;
+	}
+
+	/* Attempt to call without query */
+	if (mysql_res[handle] == NULL)
+	{
+		Plugin_Scr_Error("'mysql_query' must be called before.");
+		return;
+	}
+}
+
 /* =================================================================
  * Checks if handle correct, throws script runtime error otherwise.
  * For use only inside gsc callbacks.
@@ -185,18 +207,14 @@ void Scr_MySQL_Close_f()
    ================================================================= */
 void Scr_MySQL_Affected_Rows_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_affected_rows();");
+		Plugin_Scr_Error("Usage: rows = mysql_affected_rows(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
 	Plugin_Scr_AddInt(mysql_affected_rows(&mysql));
 }
