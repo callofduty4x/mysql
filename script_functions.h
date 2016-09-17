@@ -7,6 +7,6 @@ void Scr_MySQL_Affected_Rows_f();
 void Scr_MySQL_Query_f();
 void Scr_MySQL_Num_Rows_f();
 void Scr_MySQL_Num_Fields_f();
-void Scr_MySQL_Fetch_Row_f();
+void Scr_MySQL_Fetch_Rows_f();
 
 #endif /* SCRIPT_FUNCTIONS_H */

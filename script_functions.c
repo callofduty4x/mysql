@@ -1,15 +1,15 @@
 /* I don't want, but I have to! T-Max */
 #include "../pinc.h"
-#include "mysql/include/mysql.h"
+#ifndef WIN32
+#include "mysql/unix/include/mysql.h"
+#else
+#include "mysql/windows/include/mysql.h"
+#endif
 #include "stdio.h"
 
 extern MYSQL mysql;
 extern MYSQL_RES* mysql_res;
-extern cvar_t *g_mysql_host;
 extern cvar_t *g_mysql_port;
-extern cvar_t *g_mysql_user;
-extern cvar_t *g_mysql_password;
-extern cvar_t *g_mysql_database;
 
 static void Scr_MySQL_Error(const char* fmt, ...)
 {
@@ -38,38 +38,55 @@ static void Scr_MySQL_Error(const char* fmt, ...)
    ================================================================= */
 void Scr_MySQL_Real_Connect_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	// I want this. You may have more than one db to query against
+	char* host = Plugin_Scr_GetString(0);
+	char* user = Plugin_Scr_GetString(1);
+	char* pass = Plugin_Scr_GetString(2);
+	char* db = Plugin_Scr_GetString(3);
+	int port = Plugin_Scr_GetInt(4);
+
+	if (Plugin_Scr_GetNumParam() != 3)
 	{
-		Plugin_Scr_Error("Usage: mysql_real_connect();");
+		Plugin_Scr_Error("Usage: mysql_real_connect(host, user, pass, port*);\n*port not required");
 		return;
 	}
 
 #ifndef WIN32
 	/* On *Unix based systems, using "localhost" instead of 127.0.0.1
 	 * causes a unix socket error, we replace it */
-	if (strcmp(g_mysql_host->string, "localhost") == 0)
+	if (strcmp(host, "localhost") == 0)
 	{
-		Plugin_Cvar_SetString(g_mysql_host, "127.0.0.1");
+		Plugin_Cvar_SetString(host, "127.0.0.1");
 	}
 #endif
 
-	MYSQL* result = mysql_real_connect(&mysql, g_mysql_host->string,
-	                                   g_mysql_user->string,
-	                                   g_mysql_password->string,
-	                                   g_mysql_database->string,
-	                                   g_mysql_port->integer, NULL, 0);
+	// IF port is defined the use port ELSEIF cvar port is defined ELSE use default
+	int newPort;
+	if( port < 1 )
+		newPort = g_mysql_port->integer;
+	else if ( g_mysql_port->integer < 1 )
+		newPort = port;
+	else
+		newPort = 3306;
+
+
+	MYSQL* result = mysql_real_connect(&mysql, host,
+									   user,
+	                                   pass,
+	                                   db,
+									   newPort, NULL, 0);
 
 	/* We don't want to crash the server, so we have a check to return nothing to prevent that */
 	if (result == NULL)
 	{
 		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&mysql),
 		                 mysql_error(&mysql));
+		Plugin_Scr_AddUndefined(); // make sure we return undefined so GSC does not shit it's self.
 		return;
 	}
 
-	// What is this? Remove it if necessary.
 	/* Would you like to reconnect if connection is dropped? */
-	qboolean reconnect = qtrue;
+	qboolean reconnect = qtrue; // allows the database to reconnect on a new query etc.
 
 	/* Check to see if the mySQL server connection has dropped */
 	mysql_options(&mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -95,7 +112,7 @@ void Scr_MySQL_Close_f()
 	}
 
 	/* Closes the MySQL Handle Connection */
-	//Com_DPrintf("Closing CID: %d\n", mysql);
+	Plugin_DPrintf("Closing CID: %d\n", mysql); // t
 	mysql_close(&mysql);
 }
 
@@ -237,20 +254,21 @@ void Scr_MySQL_Num_Fields_f()
 }
 
 /* =================================================================
-* URL
-    http://dev.mysql.com/doc/refman/5.7/en/mysql-fetch-row.html
 * Description
-    Retrieves the next row of a result set.
+    Retrieves all rows from a query .
 * Return Value(s)
-    A MYSQL_ROW structure for the next row. NULL if there are no more rows to retrieve or if an error occurred.
+    A MYSQL_ROW structure from a query. It will return a different
+    array depending on the amount of rows. one row and it will return
+    a single dimensioned array using the column names as the array
+    keys. If it is more than one row then it will return a 2D array
+    the first dimension will be a numerical iterator through the rows
+    and the second dimension will be the columns names as array keys.
    ================================================================= */
-/* Todo: must be tweaked. I think, key for arrays will be great. */
-/* Todo: double check that. I didn't worked with mysql before */
-void Scr_MySQL_Fetch_Row_f()
+void Scr_MySQL_Fetch_Rows_f()
 {
 	if (Plugin_Scr_GetNumParam() > 0)
 	{
-		Plugin_Scr_Error("Usage: mysql_fetch_row();");
+		Plugin_Scr_Error("Usage: mysql_fetch_rows();");
 		return;
 	}
 
@@ -262,25 +280,46 @@ void Scr_MySQL_Fetch_Row_f()
 	}
 
 	unsigned int col_count = mysql_num_fields(mysql_res);
-	MYSQL_ROW row = mysql_fetch_row(mysql_res);
+	int row = mysql_num_rows(mysql_res);
 
-	if(row != NULL)
+	if(row != 0)
 	{
-		Plugin_Scr_MakeArray();
+        // do this no matter what.
+        Plugin_Scr_MakeArray();
 
-		int i;
-		for(i = 0; i < col_count; ++i)
-		{
-			/* A little help here? I don't actually understand data representation
-			   Integer must be integer, string - string, float - float */
-			MYSQL_FIELD *field = mysql_fetch_field(mysql_res);
-			if(field == NULL)
-			{
-				Scr_MySQL_Error("Houston, we got a problem: unnamed column!");
-				return;
-			}
-			Plugin_Scr_AddString(row[i]);
-			Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
-		}
+        int count = 0;
+        int keyArrayIndex[col_count];
+        char* keyArray[col_count];
+        MYSQL_FIELD* field;
+        while((field = mysql_fetch_field(mysql_res))) {
+            keyArray[count] = field->name; // for future reference.
+            keyArrayIndex[count] = Plugin_Scr_AllocString(keyArray[count]);
+            count++;
+        }
+
+        MYSQL_ROW rows;
+        if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
+        {
+            rows = mysql_fetch_row(mysql_res); // this will only give us one result.
+            for (int i = 0; i < col_count; i++) {
+                Plugin_Scr_AddString(rows[i]);
+                Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+            }
+        }
+        else
+        {
+            while((rows = mysql_fetch_row(mysql_res))){ // this will give us lots of results
+                Plugin_Scr_MakeArray();
+                for (int i = 0; i < col_count; i++) {
+                    Plugin_Scr_AddString(rows[i]);
+                    Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+                }
+                Plugin_Scr_AddArray();
+            }
+        }
 	}
+    else
+    {
+        Plugin_Scr_AddUndefined(); // No GSC. Behave
+    }
 }

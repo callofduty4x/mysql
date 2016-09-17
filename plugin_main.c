@@ -1,6 +1,9 @@
 #include "../pinc.h"
-
-#include "mysql/include/mysql.h"
+#ifndef WIN32
+#include "mysql/unix/include/mysql.h"
+#else
+#include "mysql/windows/include/mysql.h"
+#endif
 #include "script_functions.h"
 
 #include "stdio.h"
@@ -12,22 +15,18 @@
 #define PLUGIN_NAME "CoD4X MySQL Plugin"
 #define PLUGIN_DESCR PLUGIN_NAME" allows you to query information from " \
                     "mysql database. MySQL version: %s"
-#define PLUGIN_SHORT PLUGIN_NAME" by T-Max, Sharpienero, MichaelHillcox"
+#define PLUGIN_SHORT PLUGIN_NAME" by Sharpienero, MichaelHillcox, T-Max (T-Maxxx)"
 
 MYSQL mysql;
 MYSQL_RES* mysql_res;
 
-cvar_t *g_mysql_host;
 cvar_t *g_mysql_port;
-cvar_t *g_mysql_user;
-cvar_t *g_mysql_password;
-cvar_t *g_mysql_database;
 
 PCL void OnInfoRequest(pluginInfo_t *info)
 {
 	char description[1024] = {'\0'};
 
-	sprintf(description, PLUGIN_DESCR, mysql_get_client_version());
+	sprintf(description, PLUGIN_DESCR, (char *)mysql_get_client_version());
 	description[sizeof(description) - 1] = '\0';
 
 	info->handlerVersion.major = PLUGIN_HANDLER_VERSION_MAJOR;
@@ -43,11 +42,8 @@ PCL void OnInfoRequest(pluginInfo_t *info)
 
 PCL int OnInit()
 {
-	g_mysql_host = Plugin_Cvar_RegisterString("mysql_host", "127.0.0.1", CVAR_ARCHIVE, "Hostname or IP for connection");
+	// We only need port
 	g_mysql_port = Plugin_Cvar_RegisterInt("mysql_port", 3306, 0, 65536, CVAR_ARCHIVE, "Port for connection");
-	g_mysql_user = Plugin_Cvar_RegisterString("mysql_user", "", CVAR_ARCHIVE, "User name for connection");
-	g_mysql_password = Plugin_Cvar_RegisterString("mysql_password", "", CVAR_ARCHIVE, "User password for connection");
-	g_mysql_database = Plugin_Cvar_RegisterString("mysql_database", "", CVAR_ARCHIVE, "Name of database for connection");
 
 	Plugin_ScrAddFunction("mysql_real_connect", Scr_MySQL_Real_Connect_f);
 	Plugin_ScrAddFunction("mysql_close", Scr_MySQL_Close_f);
@@ -55,12 +51,12 @@ PCL int OnInit()
 	Plugin_ScrAddFunction("mysql_query", Scr_MySQL_Query_f);
 	Plugin_ScrAddFunction("mysql_num_rows", Scr_MySQL_Num_Rows_f);
 	Plugin_ScrAddFunction("mysql_num_fields", Scr_MySQL_Num_Fields_f);
-	Plugin_ScrAddFunction("mysql_fetch_row", Scr_MySQL_Fetch_Row_f);
+	Plugin_ScrAddFunction("mysql_fetch_rows", Scr_MySQL_Fetch_Rows_f);
+	// TODO: @michaelhillcox add more mysql functions for better support
 
 	if (mysql_init(&mysql) == NULL)
 	{
-		Plugin_PrintError("MySQL plugin initialization failed: (%d) %s\n",
-		                   mysql_errno(&mysql), mysql_error(&mysql));
+		Plugin_PrintError("MySQL plugin initialization failed: (%d) %s\n", mysql_errno(&mysql), mysql_error(&mysql));
 	}
 }
 
