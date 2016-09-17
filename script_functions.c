@@ -1,16 +1,26 @@
-/* I don't want, but I have to! T-Max */
+/* Plugin includes */
 #include "../pinc.h"
-#include "mysql/include/mysql.h"
+#include "script_functions.h"
+
+/* OS-specific includes */
+#ifdef WIN32
+	#include "mysql/windows/include/mysql.h"
+#else
+	#include "mysql/unix/include/mysql.h"
+#endif
+
 #include "stdio.h"
 
-extern MYSQL mysql;
-extern MYSQL_RES* mysql_res;
-extern cvar_t *g_mysql_host;
-extern cvar_t *g_mysql_port;
-extern cvar_t *g_mysql_user;
-extern cvar_t *g_mysql_password;
-extern cvar_t *g_mysql_database;
+extern MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
+extern MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
+extern qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
 
+//extern cvar_t *g_mysql_port;
+
+/* =================================================================
+ * Shows script runtime error with crash.
+ * For use only inside gsc callbacks.
+   ================================================================= */
 static void Scr_MySQL_Error(const char* fmt, ...)
 {
 	char buffer[1024] = {'\0'};
@@ -21,6 +31,55 @@ static void Scr_MySQL_Error(const char* fmt, ...)
 	va_end(va);
 
 	Plugin_Scr_Error(buffer);
+}
+
+/* =================================================================
+ * Checks if function called after connection.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static void Scr_MySQL_CheckConnection(int handle)
+{
+	/* Attempt to call without connection */
+	if (g_mysql_reserved[handle] == qfalse)
+	{
+		Plugin_Scr_Error("'mysql_real_connection' must be called before.");
+		return;
+	}
+}
+
+/* =================================================================
+ * Checks if function called after query.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static void Scr_MySQL_CheckQuery(int handle)
+{
+	/* Attempt to call without query */
+	if (g_mysql_res[handle] == NULL)
+	{
+		Plugin_Scr_Error("'mysql_query' must be called before.");
+	}
+}
+
+/* =================================================================
+ * Checks if function called after connection and query.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static void Scr_MySQL_CheckCall(int handle)
+{
+	Scr_MySQL_CheckConnection(handle);
+	Scr_MySQL_CheckQuery(handle);
+}
+
+/* =================================================================
+ * Checks if handle correct, throws script runtime error otherwise.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static int Scr_MySQL_GetHandle(int argnum)
+{
+	int handle = Plugin_Scr_GetInt(argnum);
+	if(handle < 0 || handle >= MYSQL_CONNECTION_COUNT)
+		Plugin_Scr_ParamError(argnum, "Incorrect connection handle");
+	return handle;
 }
 
 /* =================================================================
@@ -38,41 +97,77 @@ static void Scr_MySQL_Error(const char* fmt, ...)
    ================================================================= */
 void Scr_MySQL_Real_Connect_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	int argc = Plugin_Scr_GetNumParam();
+	if (argc != 4 && argc != 5)
 	{
-		Plugin_Scr_Error("Usage: mysql_real_connect();");
+		Plugin_Scr_Error("Usage: handle = mysql_real_connect(<str host>, "
+						 "<str user>, <str passwd>, <str db>, "
+						 "[int port=3306]);");
 		return;
+	}
+
+	char* host = Plugin_Scr_GetString(0);
+	char* user = Plugin_Scr_GetString(1);
+	char* pass = Plugin_Scr_GetString(2);
+	char* db = Plugin_Scr_GetString(3);
+	int port = 3306;
+	if (argc == 5)
+	{
+		port = Plugin_Scr_GetInt(4);
+		if(port < 0 || port > 65535)
+		{
+			Plugin_Scr_ParamError(4, "Incorrect port: must be any integer "
+								  "from 0 to 65535");
+			return;
+		}
 	}
 
 #ifndef WIN32
 	/* On *Unix based systems, using "localhost" instead of 127.0.0.1
 	 * causes a unix socket error, we replace it */
-	if (strcmp(g_mysql_host->string, "localhost") == 0)
+	if (strcmp(host, "localhost") == 0)
 	{
-		Plugin_Cvar_SetString(g_mysql_host, "127.0.0.1");
+		host = "127.0.0.1";
 	}
 #endif
 
-	MYSQL* result = mysql_real_connect(&mysql, g_mysql_host->string,
-	                                   g_mysql_user->string,
-	                                   g_mysql_password->string,
-	                                   g_mysql_database->string,
-	                                   g_mysql_port->integer, NULL, 0);
+	int handle = 0;
+	while(handle < MYSQL_CONNECTION_COUNT)
+	{
+		if (g_mysql_reserved[handle] == qfalse) /* Will be reserved a bit later */
+			break;
+		++handle;
+
+		if(handle == MYSQL_CONNECTION_COUNT - 1) /* Whoops */
+		{
+			Scr_MySQL_Error("MySQL connect error: max connections exceeded "
+							"(%d)", MYSQL_CONNECTION_COUNT);
+			return;
+		}
+	}
+	MYSQL* result = mysql_real_connect(&g_mysql[handle], host,
+									   user,
+	                                   pass,
+	                                   db,
+									   port, NULL, 0);
 
 	/* We don't want to crash the server, so we have a check to return nothing to prevent that */
 	if (result == NULL)
 	{
-		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&mysql),
-		                 mysql_error(&mysql));
+		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&g_mysql[handle]),
+		                 mysql_error(&g_mysql[handle]));
+		Plugin_Scr_AddUndefined(); // make sure we return undefined so GSC does not shit it's self.
 		return;
 	}
+	g_mysql_reserved[handle] = qtrue;
 
-	// What is this? Remove it if necessary.
 	/* Would you like to reconnect if connection is dropped? */
-	qboolean reconnect = qtrue;
+	qboolean reconnect = qtrue; // allows the database to reconnect on a new query etc.
 
 	/* Check to see if the mySQL server connection has dropped */
-	mysql_options(&mysql, MYSQL_OPT_RECONNECT, &reconnect);
+	mysql_options(&g_mysql[handle], MYSQL_OPT_RECONNECT, &reconnect);
+
+	Plugin_Scr_AddInt(handle);
 }
 
 /* =================================================================
@@ -88,15 +183,23 @@ void Scr_MySQL_Real_Connect_f()
    ================================================================= */
 void Scr_MySQL_Close_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_close();");
+		Plugin_Scr_Error("Usage: mysql_close(<handle>);");
 		return;
 	}
+	int handle = Scr_MySQL_GetHandle(0);
 
-	/* Closes the MySQL Handle Connection */
-	//Com_DPrintf("Closing CID: %d\n", mysql);
-	mysql_close(&mysql);
+	/* Closes the MySQL Handle Connection and frees its query result */
+	Plugin_DPrintf("Closing MySQL connection: %d\n", handle);
+
+	if(g_mysql_res[handle] != NULL)
+	{
+		mysql_free_result(g_mysql_res[handle]);
+		g_mysql_res[handle] = NULL;
+	}
+	mysql_close(&g_mysql[handle]);
+	g_mysql_reserved[handle] = qfalse;
 }
 
 /* =================================================================
@@ -120,20 +223,16 @@ void Scr_MySQL_Close_f()
    ================================================================= */
 void Scr_MySQL_Affected_Rows_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_affected_rows();");
+		Plugin_Scr_Error("Usage: rows = mysql_affected_rows(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	Plugin_Scr_AddInt(mysql_affected_rows(&mysql));
+	Plugin_Scr_AddInt(mysql_affected_rows(&g_mysql[handle]));
 }
 
 /* =================================================================
@@ -153,34 +252,39 @@ void Scr_MySQL_Affected_Rows_f()
 /* Combine result output here? */
 void Scr_MySQL_Query_f()
 {
-	if (Plugin_Scr_GetNumParam() != 1)
+	if (Plugin_Scr_GetNumParam() != 2)
 	{
-		Plugin_Scr_Error("Usage: mysql_query(<string query>);");
+		Plugin_Scr_Error("Usage: mysql_query(<handle>, <string query>);");
 		return;
 	}
 
-	char* query = Plugin_Scr_GetString(0);
+	int handle = Scr_MySQL_GetHandle(0);
+	char* query = Plugin_Scr_GetString(1);
 
-	if (mysql_query(&mysql, query) == 0)
+	Scr_MySQL_CheckConnection(handle);
+
+	if (mysql_query(&g_mysql[handle], query) == 0)
 	{
-		if(mysql_res)
+		if(g_mysql_res[handle])
 		{
-			mysql_free_result(mysql_res);
-			mysql_res = NULL;
+			mysql_free_result(g_mysql_res[handle]);
+			g_mysql_res[handle] = NULL;
 		}
 
-		mysql_res = mysql_store_result(&mysql);
+		g_mysql_res[handle] = mysql_store_result(&g_mysql[handle]);
 
-		if(mysql_res == NULL)
+		if(g_mysql_res[handle] == NULL)
 		{
-			Scr_MySQL_Error("MySQL store error: (%d) %s", mysql_errno(&mysql),
-			                 mysql_error(&mysql));
+			Scr_MySQL_Error("MySQL store error: (%d) %s",
+			                mysql_errno(&g_mysql[handle]),
+			                mysql_error(&g_mysql[handle]));
 		}
 	}
 	else
 	{
-		Scr_MySQL_Error("MySQL query error: (%d) %s", mysql_errno(&mysql),
-		                 mysql_error(&mysql));
+		Scr_MySQL_Error("MySQL query error: (%d) %s",
+		                mysql_errno(&g_mysql[handle]),
+		                mysql_error(&g_mysql[handle]));
 	}
 }
 
@@ -194,20 +298,16 @@ void Scr_MySQL_Query_f()
    ================================================================= */
 void Scr_MySQL_Num_Rows_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_num_rows();");
+		Plugin_Scr_Error("Usage: mysql_num_rows(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	Plugin_Scr_AddInt(mysql_num_rows(mysql_res));
+	Plugin_Scr_AddInt(mysql_num_rows(g_mysql_res[handle]));
 }
 
 /* =================================================================
@@ -220,20 +320,16 @@ void Scr_MySQL_Num_Rows_f()
    ================================================================= */
 void Scr_MySQL_Num_Fields_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_num_fields();");
+		Plugin_Scr_Error("Usage: mysql_num_fields(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	Plugin_Scr_AddInt(mysql_num_fields(mysql_res));
+	Plugin_Scr_AddInt(mysql_num_fields(g_mysql_res[handle]));
 }
 
 /* =================================================================
@@ -248,32 +344,29 @@ void Scr_MySQL_Num_Fields_f()
 /* Todo: double check that. I didn't worked with mysql before */
 void Scr_MySQL_Fetch_Row_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_fetch_row();");
+		Plugin_Scr_Error("Usage: mysql_fetch_row(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	unsigned int col_count = mysql_num_fields(mysql_res);
-	MYSQL_ROW row = mysql_fetch_row(mysql_res);
+	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
+	MYSQL_ROW row = mysql_fetch_row(g_mysql_res[handle]);
 
 	if(row != NULL)
 	{
 		Plugin_Scr_MakeArray();
 
 		int i;
+		mysql_field_seek(g_mysql_res[handle], 0);
 		for(i = 0; i < col_count; ++i)
 		{
 			/* A little help here? I don't actually understand data representation
 			   Integer must be integer, string - string, float - float */
-			MYSQL_FIELD *field = mysql_fetch_field(mysql_res);
+			MYSQL_FIELD *field = mysql_fetch_field(g_mysql_res[handle]);
 			if(field == NULL)
 			{
 				Scr_MySQL_Error("Houston, we got a problem: unnamed column!");
@@ -282,5 +375,78 @@ void Scr_MySQL_Fetch_Row_f()
 			Plugin_Scr_AddString(row[i]);
 			Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
 		}
+	}
+}
+
+/* =================================================================
+* Description
+    Retrieves all rows from a query .
+* Return Value(s)
+    A MYSQL_ROW structure from a query. It will return a different
+    array depending on the amount of rows. one row and it will return
+    a single dimensioned array using the column names as the array
+    keys. If it is more than one row then it will return a 2D array
+    the first dimension will be a numerical iterator through the rows
+    and the second dimension will be the columns names as array keys.
+   ================================================================= */
+void Scr_MySQL_Fetch_Rows_f()
+{
+	if (Plugin_Scr_GetNumParam() != 1)
+	{
+		Plugin_Scr_Error("Usage: mysql_fetch_rows(<handle>);");
+		return;
+	}
+
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
+
+	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
+
+	// do this no matter what.
+	Plugin_Scr_MakeArray();
+
+	if(mysql_num_rows(g_mysql_res[handle]) != 0) /* Rows are exist */
+	{
+		int i = 0;
+
+		//int keyArrayIndex[col_count]; // NO, NO and... NO
+		//char* keyArray[col_count];    // When you do that, in this world one T-Max cries somewhere!
+		// First answer: http://stackoverflow.com/questions/5377411/non-const-declaration-of-array
+
+		/*int* keyArrayIndex = calloc(col_count, sizeof(int));
+		MYSQL_FIELD* field;
+		while((field = mysql_fetch_field(g_mysql_res[handle])) != NULL)
+		{
+			keyArrayIndex[i] = Plugin_Scr_AllocString(field->name);
+			++i;
+		}*/
+
+		MYSQL_ROW rows;
+		/*if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
+		{
+			rows = mysql_fetch_row(g_mysql_res[handle]); // this will only give us one result.
+			for (i = 0; i < col_count; ++i) {
+				Plugin_Scr_AddString(rows[i]);
+				Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+			}
+		}
+		else
+		{*/
+			while((rows = mysql_fetch_row(g_mysql_res[handle])) != NULL)
+			{
+				Plugin_Scr_MakeArray();
+
+				mysql_field_seek(g_mysql_res[handle], 0);
+				for (i = 0; i < col_count; ++i)
+				{
+					Plugin_Scr_AddString(rows[i]);
+
+					MYSQL_FIELD* field = mysql_fetch_field(g_mysql_res[handle]);
+					Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
+				}
+				Plugin_Scr_AddArray();
+			}
+		//}
+		//free(keyArrayIndex);
 	}
 }

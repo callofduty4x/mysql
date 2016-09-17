@@ -1,15 +1,16 @@
 @echo off
-cd bin
+cd bin/win32
+set LIBNAME="cod4x_mysql.dll"
 
-echo Compile...
-	gcc -O3 -I../mysql/include -c ../*.c
+echo Compiling...
+	gcc -O3 -Wall -s -fvisibility=hidden -I../../mysql/windows/include -c ../../*.c
 
-echo Link...
-	gcc -O3 -shared -o cod4x_mysql.dll *.o ../mysql/lib/libmysql.lib ../../libcom_plugin.a
+echo Linking...
+	gcc -O3 -s -shared -fvisibility=hidden -o %LIBNAME% *.o ../../mysql/windows/lib/libmysql.lib ../../../libcom_plugin.a
 
-echo Cleanup...
+echo Cleaning up...
 	del *.o
 
 echo Done.
 
-cd ..
+cd ../..

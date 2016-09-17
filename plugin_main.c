@@ -1,27 +1,32 @@
-#include "../pinc.h"
-
-#include "mysql/include/mysql.h"
-#include "script_functions.h"
-
+/* Std lib includes */
 #include "stdio.h"
 
+/* Plugin includes */
+#include "../pinc.h"
+#include "script_functions.h"
 
+/* OS-specific includes */
+#ifdef WIN32
+	#include "mysql/windows/include/mysql.h"
+#else
+	#include "mysql/unix/include/mysql.h"
+#endif
+
+/* Plugin definitions */
 #define PLUGIN_VERSION_MAJOR 1
-#define PLUGIN_VERSION_MINOR 0
+#define PLUGIN_VERSION_MINOR 1
 
 #define PLUGIN_NAME "CoD4X MySQL Plugin"
 #define PLUGIN_DESCR PLUGIN_NAME" allows you to query information from " \
-                    "mysql database. MySQL version: %s"
-#define PLUGIN_SHORT PLUGIN_NAME" by T-Max, Sharpienero, MichaelHillcox"
+                    "mysql database. MySQL version: %lu"
+#define PLUGIN_SHORT PLUGIN_NAME" by Sharpienero, MichaelHillcox, T-Max"
 
-MYSQL mysql;
-MYSQL_RES* mysql_res;
+/* Globals */
+MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
+MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
+qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
 
-cvar_t *g_mysql_host;
-cvar_t *g_mysql_port;
-cvar_t *g_mysql_user;
-cvar_t *g_mysql_password;
-cvar_t *g_mysql_database;
+//cvar_t *g_mysql_port;
 
 PCL void OnInfoRequest(pluginInfo_t *info)
 {
@@ -43,12 +48,9 @@ PCL void OnInfoRequest(pluginInfo_t *info)
 
 PCL int OnInit()
 {
-	g_mysql_host = Plugin_Cvar_RegisterString("mysql_host", "127.0.0.1", CVAR_ARCHIVE, "Hostname or IP for connection");
-	g_mysql_port = Plugin_Cvar_RegisterInt("mysql_port", 3306, 0, 65536, CVAR_ARCHIVE, "Port for connection");
-	g_mysql_user = Plugin_Cvar_RegisterString("mysql_user", "", CVAR_ARCHIVE, "User name for connection");
-	g_mysql_password = Plugin_Cvar_RegisterString("mysql_password", "", CVAR_ARCHIVE, "User password for connection");
-	g_mysql_database = Plugin_Cvar_RegisterString("mysql_database", "", CVAR_ARCHIVE, "Name of database for connection");
+	//g_mysql_port = Plugin_Cvar_RegisterInt("mysql_port", 3306, 0, 65535, CVAR_ARCHIVE, "Port for connection");
 
+	/* MySQL-documented */
 	Plugin_ScrAddFunction("mysql_real_connect", Scr_MySQL_Real_Connect_f);
 	Plugin_ScrAddFunction("mysql_close", Scr_MySQL_Close_f);
 	Plugin_ScrAddFunction("mysql_affected_rows", Scr_MySQL_Affected_Rows_f);
@@ -57,16 +59,34 @@ PCL int OnInit()
 	Plugin_ScrAddFunction("mysql_num_fields", Scr_MySQL_Num_Fields_f);
 	Plugin_ScrAddFunction("mysql_fetch_row", Scr_MySQL_Fetch_Row_f);
 
-	if (mysql_init(&mysql) == NULL)
+	/* MySQL-custom */
+	Plugin_ScrAddFunction("mysql_fetch_rows", Scr_MySQL_Fetch_Rows_f);
+
+	// TODO: @michaelhillcox add more mysql functions for better support
+	int i = 0;
+	while(i < MYSQL_CONNECTION_COUNT)
 	{
-		Plugin_PrintError("MySQL plugin initialization failed: (%d) %s\n",
-		                   mysql_errno(&mysql), mysql_error(&mysql));
+		if (mysql_init(&g_mysql[i]) == NULL)
+		{
+			Plugin_PrintError("MySQL plugin initialization[%d] failed: "
+			                  "(%d) %s", i, mysql_errno(&g_mysql[i]),
+			                  mysql_error(&g_mysql[i]));
+		}
+		g_mysql_res[i] = NULL;
+		++i;
 	}
+
+	return 0;
 }
 
 PCL void OnTerminate()
 {
-	if(mysql_res)
-		mysql_free_result(mysql_res);
-	mysql_close(&mysql);
+	int i = 0;
+	while(i < MYSQL_CONNECTION_COUNT)
+	{
+		if(g_mysql_res[i])
+			mysql_free_result(g_mysql_res[i]);
+		mysql_close(&g_mysql[i]);
+		++i;
+	}
 }
