@@ -11,7 +11,7 @@ CoD4X MySQL support for GSC. Continious connection up to 4 databases supported.
 
 #### `mysql_real_connect(<str host>, <str user>, <str passwd>, <str db>, [int port=3306])`
 
-Connects to a database, returns handle to database connection. If you want to connect to multiple databases, you can call this function up to 4 times. Do not forget to close connection with `mysql_close()`. TODO: link here!
+Connects to a database, returns handle to database connection. If you want to connect to multiple databases, you can call this function up to 4 times. Do not forget to close connection with [mysql_close()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_closehandle). TODO: link here!
 
 If "localhost" passed as `host`, for *NIX OS will be changed to "127.0.0.1".
 
@@ -28,31 +28,31 @@ Usage example: `mysql_close(handle);`
 
 #### `mysql_query(<handle>, <str query>)`
 
-Send a query to a database and saves the result for use in following functions. Must be called after `mysql_real_connect()`.
+Send a query to a database and saves the result for use in following functions. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306).
 
 Usage example: `mysql_query(handle, "SELECT * from users");`
 
 #### `mysql_num_rows(<handle>)`
 
-Returns the amount of rows received after latest query. Must be called after `mysql_real_connect()` and `mysql_query()`.
+Returns the amount of rows received after latest query. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
 Usage example: `rowsCount = mysql_num_rows(handle);`
 
 #### `mysql_affected_rows(<handle>)`
 
-Returns the amount of affected rows after latest query. Must be called after `mysql_real_connect()` and `mysql_query()`.
+Returns the amount of affected rows after latest query. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
 Usage example: `rowsCount = mysql_affected_rows(handle);`
 
 #### `mysql_num_fields(<handle>)`
 
-Returns number of fields in latest query result. Must be called after `mysql_real_connect()` and `mysql_query()`.
+Returns number of fields in latest query result. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
 Usage example: `fieldsCount = mysql_num_field(handle);`
 
 #### `mysql_fetch_row(<handle>)`
 
-Returns next row from latest query result as array. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after `mysql_real_connect()` and `mysql_query()`.
+Returns next row from latest query result as array. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
 Usage example: 
 ```
@@ -67,7 +67,7 @@ for(j = 0; j < keys.size; j++)
 ### Non-MySQL Related Functions
 #### `mysql_fetch_rows(<handle>)`
 
-Returns all rows from latest query result as 2-dimensional array. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after `mysql_real_connect()` and `mysql_query()`.
+Returns all rows from latest query result as 2-dimensional array. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
 Usage example: 
 ```
