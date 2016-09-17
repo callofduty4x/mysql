@@ -24,6 +24,7 @@
 /* Globals */
 MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
 MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
+qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
 
 //cvar_t *g_mysql_port;
 

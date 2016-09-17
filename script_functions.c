@@ -1,5 +1,6 @@
 /* Plugin includes */
 #include "../pinc.h"
+#include "script_functions.h"
 
 /* OS-specific includes */
 #ifdef WIN32
@@ -10,10 +11,16 @@
 
 #include "stdio.h"
 
-extern MYSQL mysql;
-extern MYSQL_RES* mysql_res;
-extern cvar_t *g_mysql_port;
+extern MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
+extern MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
+extern qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
 
+//extern cvar_t *g_mysql_port;
+
+/* =================================================================
+ * Shows script runtime error with crash.
+ * For use only inside gsc callbacks.
+   ================================================================= */
 static void Scr_MySQL_Error(const char* fmt, ...)
 {
 	char buffer[1024] = {'\0'};
@@ -41,60 +48,77 @@ static void Scr_MySQL_Error(const char* fmt, ...)
    ================================================================= */
 void Scr_MySQL_Real_Connect_f()
 {
-	if (Plugin_Scr_GetNumParam() != 3)
+	int argc = Plugin_Scr_GetNumParam();
+	if (argc != 4 && argc != 5)
 	{
-		Plugin_Scr_Error("Usage: mysql_real_connect(host, user, pass, port*);\n*port not required");
+		Plugin_Scr_Error("Usage: handle = mysql_real_connect(<str host>, "
+						 "<str user>, <str passwd>, <str db>, "
+						 "[int port=3306]);");
 		return;
 	}
 
-	// I want this. You may have more than one db to query against
 	char* host = Plugin_Scr_GetString(0);
 	char* user = Plugin_Scr_GetString(1);
 	char* pass = Plugin_Scr_GetString(2);
 	char* db = Plugin_Scr_GetString(3);
-	int port = Plugin_Scr_GetInt(4);
-
-
+	int port = 3306;
+	if (argc == 5)
+	{
+		port = Plugin_Scr_GetInt(4);
+		if(port < 0 || port > 65535)
+		{
+			Plugin_Scr_ParamError(4, "Incorrect port: must be any integer "
+								  "from 0 to 65535");
+			return;
+		}
+	}
 
 #ifndef WIN32
 	/* On *Unix based systems, using "localhost" instead of 127.0.0.1
 	 * causes a unix socket error, we replace it */
 	if (strcmp(host, "localhost") == 0)
 	{
-		Plugin_Cvar_SetString(host, "127.0.0.1");
+		host = "127.0.0.1";
 	}
 #endif
 
-	// IF port is defined the use port ELSEIF cvar port is defined ELSE use default
-	int newPort;
-	if( port < 1 )
-		newPort = g_mysql_port->integer;
-	else if ( g_mysql_port->integer < 1 )
-		newPort = port;
-	else
-		newPort = 3306;
+	int handle = 0;
+	while(handle < MYSQL_CONNECTION_COUNT)
+	{
+		if (g_mysql_reserved[handle] == qfalse) /* Will be reserved a bit later */
+			break;
+		++handle;
 
-
-	MYSQL* result = mysql_real_connect(&mysql, host,
+		if(handle == MYSQL_CONNECTION_COUNT - 1) /* Whoops */
+		{
+			Scr_MySQL_Error("MySQL connect error: max connections exceeded "
+							"(%d)", MYSQL_CONNECTION_COUNT);
+			return;
+		}
+	}
+	MYSQL* result = mysql_real_connect(&g_mysql[handle], host,
 									   user,
 	                                   pass,
 	                                   db,
-									   newPort, NULL, 0);
+									   port, NULL, 0);
 
 	/* We don't want to crash the server, so we have a check to return nothing to prevent that */
 	if (result == NULL)
 	{
-		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&mysql),
-		                 mysql_error(&mysql));
+		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&g_mysql[handle]),
+		                 mysql_error(&g_mysql[handle]));
 		Plugin_Scr_AddUndefined(); // make sure we return undefined so GSC does not shit it's self.
 		return;
 	}
+	g_mysql_reserved[handle] = qtrue;
 
 	/* Would you like to reconnect if connection is dropped? */
 	qboolean reconnect = qtrue; // allows the database to reconnect on a new query etc.
 
 	/* Check to see if the mySQL server connection has dropped */
-	mysql_options(&mysql, MYSQL_OPT_RECONNECT, &reconnect);
+	mysql_options(&g_mysql[handle], MYSQL_OPT_RECONNECT, &reconnect);
+
+	Plugin_Scr_AddInt(handle);
 }
 
 /* =================================================================
@@ -256,6 +280,55 @@ void Scr_MySQL_Num_Fields_f()
 	}
 
 	Plugin_Scr_AddInt(mysql_num_fields(mysql_res));
+}
+
+/* =================================================================
+* URL
+    http://dev.mysql.com/doc/refman/5.7/en/mysql-fetch-row.html
+* Description
+    Retrieves the next row of a result set.
+* Return Value(s)
+    A MYSQL_ROW structure for the next row. NULL if there are no more rows to retrieve or if an error occurred.
+   ================================================================= */
+/* Todo: must be tweaked. I think, key for arrays will be great. */
+/* Todo: double check that. I didn't worked with mysql before */
+void Scr_MySQL_Fetch_Row_f()
+{
+	if (Plugin_Scr_GetNumParam() > 0)
+	{
+		Plugin_Scr_Error("Usage: mysql_fetch_row();");
+		return;
+	}
+
+	/* Attempt to call without query */
+	if (mysql_res == NULL)
+	{
+		Plugin_Scr_Error("'mysql_query' must be called before.");
+		return;
+	}
+
+	unsigned int col_count = mysql_num_fields(mysql_res);
+	MYSQL_ROW row = mysql_fetch_row(mysql_res);
+
+	if(row != NULL)
+	{
+		Plugin_Scr_MakeArray();
+
+		int i;
+		for(i = 0; i < col_count; ++i)
+		{
+			/* A little help here? I don't actually understand data representation
+			   Integer must be integer, string - string, float - float */
+			MYSQL_FIELD *field = mysql_fetch_field(mysql_res);
+			if(field == NULL)
+			{
+				Scr_MySQL_Error("Houston, we got a problem: unnamed column!");
+				return;
+			}
+			Plugin_Scr_AddString(row[i]);
+			Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
+		}
+	}
 }
 
 /* =================================================================
