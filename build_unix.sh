@@ -1,5 +1,5 @@
+#!/bin/sh
 cd bin/unix
-#!/bin/bash
 LIBNAME='cod4x_mysql.so'
 
 echo Compiling...

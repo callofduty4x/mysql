@@ -361,6 +361,7 @@ void Scr_MySQL_Fetch_Row_f()
 		Plugin_Scr_MakeArray();
 
 		int i;
+		mysql_field_seek(g_mysql_res[handle], 0);
 		for(i = 0; i < col_count; ++i)
 		{
 			/* A little help here? I don't actually understand data representation
@@ -400,12 +401,11 @@ void Scr_MySQL_Fetch_Rows_f()
 	Scr_MySQL_CheckCall(handle);
 
 	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
-	int row = mysql_num_rows(g_mysql_res[handle]);
 
 	// do this no matter what.
 	Plugin_Scr_MakeArray();
 
-	if(row != 0)
+	if(mysql_num_rows(g_mysql_res[handle]) != 0) /* Rows are exist */
 	{
 		int i = 0;
 
@@ -413,13 +413,13 @@ void Scr_MySQL_Fetch_Rows_f()
 		//char* keyArray[col_count];    // When you do that, in this world one T-Max cries somewhere!
 		// First answer: http://stackoverflow.com/questions/5377411/non-const-declaration-of-array
 
-		int* keyArrayIndex = calloc(col_count, sizeof(int));
+		/*int* keyArrayIndex = calloc(col_count, sizeof(int));
 		MYSQL_FIELD* field;
 		while((field = mysql_fetch_field(g_mysql_res[handle])) != NULL)
 		{
 			keyArrayIndex[i] = Plugin_Scr_AllocString(field->name);
 			++i;
-		}
+		}*/
 
 		MYSQL_ROW rows;
 		/*if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
@@ -435,13 +435,18 @@ void Scr_MySQL_Fetch_Rows_f()
 			while((rows = mysql_fetch_row(g_mysql_res[handle])) != NULL)
 			{
 				Plugin_Scr_MakeArray();
-				for (i = 0; i < col_count; ++i) {
+
+				mysql_field_seek(g_mysql_res[handle], 0);
+				for (i = 0; i < col_count; ++i)
+				{
 					Plugin_Scr_AddString(rows[i]);
-					Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+
+					MYSQL_FIELD* field = mysql_fetch_field(g_mysql_res[handle]);
+					Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
 				}
 				Plugin_Scr_AddArray();
 			}
 		//}
-		free(keyArrayIndex);
+		//free(keyArrayIndex);
 	}
 }
