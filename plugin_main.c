@@ -18,7 +18,7 @@
 
 #define PLUGIN_NAME "CoD4X MySQL Plugin"
 #define PLUGIN_DESCR PLUGIN_NAME" allows you to query information from " \
-                    "mysql database. MySQL version: %d"
+                    "mysql database. MySQL version: %lu"
 #define PLUGIN_SHORT PLUGIN_NAME" by Sharpienero, MichaelHillcox, T-Max"
 
 /* Globals */
@@ -68,12 +68,15 @@ PCL int OnInit()
 	{
 		if (mysql_init(&g_mysql[i]) == NULL)
 		{
-			Plugin_PrintError("MySQL plugin initialization[%d] failed: (%d) %s",
-			                  i, mysql_errno(&mysql), mysql_error(&mysql));
+			Plugin_PrintError("MySQL plugin initialization[%d] failed: "
+			                  "(%d) %s", i, mysql_errno(&g_mysql[i]),
+			                  mysql_error(&g_mysql[i]));
 		}
 		g_mysql_res[i] = NULL;
 		++i;
 	}
+
+	return 0;
 }
 
 PCL void OnTerminate()

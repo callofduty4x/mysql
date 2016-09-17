@@ -54,7 +54,7 @@ static void Scr_MySQL_CheckConnection(int handle)
 static void Scr_MySQL_CheckQuery(int handle)
 {
 	/* Attempt to call without query */
-	if (mysql_res[handle] == NULL)
+	if (g_mysql_res[handle] == NULL)
 	{
 		Plugin_Scr_Error("'mysql_query' must be called before.");
 	}
@@ -199,7 +199,7 @@ void Scr_MySQL_Close_f()
 		g_mysql_res[handle] = NULL;
 	}
 	mysql_close(&g_mysql[handle]);
-	g_mysql_reserved[handle] = false;
+	g_mysql_reserved[handle] = qfalse;
 }
 
 /* =================================================================
@@ -232,7 +232,7 @@ void Scr_MySQL_Affected_Rows_f()
 	int handle = Scr_MySQL_GetHandle(0);
 	Scr_MySQL_CheckCall(handle);
 
-	Plugin_Scr_AddInt(mysql_affected_rows(&mysql));
+	Plugin_Scr_AddInt(mysql_affected_rows(&g_mysql[handle]));
 }
 
 /* =================================================================
