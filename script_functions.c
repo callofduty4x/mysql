@@ -390,60 +390,58 @@ void Scr_MySQL_Fetch_Row_f()
    ================================================================= */
 void Scr_MySQL_Fetch_Rows_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_fetch_rows();");
+		Plugin_Scr_Error("Usage: mysql_fetch_rows(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	unsigned int col_count = mysql_num_fields(mysql_res);
-	int row = mysql_num_rows(mysql_res);
+	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
+	int row = mysql_num_rows(g_mysql_res[handle]);
+
+	// do this no matter what.
+	Plugin_Scr_MakeArray();
 
 	if(row != 0)
 	{
-        // do this no matter what.
-        Plugin_Scr_MakeArray();
+		int i = 0;
 
-        int count = 0;
-        int keyArrayIndex[col_count];
-        char* keyArray[col_count];
-        MYSQL_FIELD* field;
-        while((field = mysql_fetch_field(mysql_res))) {
-            keyArray[count] = field->name; // for future reference.
-            keyArrayIndex[count] = Plugin_Scr_AllocString(keyArray[count]);
-            count++;
-        }
+		//int keyArrayIndex[col_count]; // NO, NO and... NO
+		//char* keyArray[col_count];    // When you do that, in this world one T-Max cries somewhere!
+		// First answer: http://stackoverflow.com/questions/5377411/non-const-declaration-of-array
 
-        MYSQL_ROW rows;
-        if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
-        {
-            rows = mysql_fetch_row(mysql_res); // this will only give us one result.
-            for (int i = 0; i < col_count; i++) {
-                Plugin_Scr_AddString(rows[i]);
-                Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
-            }
-        }
-        else
-        {
-            while((rows = mysql_fetch_row(mysql_res))){ // this will give us lots of results
-                Plugin_Scr_MakeArray();
-                for (int i = 0; i < col_count; i++) {
-                    Plugin_Scr_AddString(rows[i]);
-                    Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
-                }
-                Plugin_Scr_AddArray();
-            }
-        }
+		int* keyArrayIndex = calloc(col_count, sizeof(int));
+		MYSQL_FIELD* field;
+		while((field = mysql_fetch_field(g_mysql_res[handle])) != NULL)
+		{
+			keyArrayIndex[i] = Plugin_Scr_AllocString(field->name);
+			++i;
+		}
+
+		MYSQL_ROW rows;
+		/*if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
+		{
+			rows = mysql_fetch_row(g_mysql_res[handle]); // this will only give us one result.
+			for (i = 0; i < col_count; ++i) {
+				Plugin_Scr_AddString(rows[i]);
+				Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+			}
+		}
+		else
+		{*/
+			while((rows = mysql_fetch_row(g_mysql_res[handle])) != NULL)
+			{
+				Plugin_Scr_MakeArray();
+				for (i = 0; i < col_count; ++i) {
+					Plugin_Scr_AddString(rows[i]);
+					Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+				}
+				Plugin_Scr_AddArray();
+			}
+		//}
+		free(keyArrayIndex);
 	}
-    else
-    {
-        Plugin_Scr_AddUndefined(); // No GSC. Behave
-    }
 }
