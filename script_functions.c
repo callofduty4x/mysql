@@ -32,6 +32,17 @@ static void Scr_MySQL_Error(const char* fmt, ...)
 
 	Plugin_Scr_Error(buffer);
 }
+/* =================================================================
+ * Checks if handle correct, throws script runtime error otherwise.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static int Scr_MySQL_GetHandle(int argnum)
+{
+	int handle = Plugin_Scr_GetInt(argnum);
+	if(handle < 0 || handle >= MYSQL_CONNECTION_COUNT)
+		Plugin_Scr_ParamError(argnum, "Incorrect connection handle");
+	return handle;
+}
 
 /* =================================================================
 * URL
@@ -134,15 +145,23 @@ void Scr_MySQL_Real_Connect_f()
    ================================================================= */
 void Scr_MySQL_Close_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_close();");
+		Plugin_Scr_Error("Usage: mysql_close(<handle>);");
 		return;
 	}
+	int handle = Scr_MySQL_GetHandle(0);
 
-	/* Closes the MySQL Handle Connection */
-	Plugin_DPrintf("Closing CID: %d\n", mysql); // t
-	mysql_close(&mysql);
+	/* Closes the MySQL Handle Connection and frees its query result */
+	Plugin_DPrintf("Closing MySQL connection: %d\n", handle);
+
+	if(g_mysql_res[handle] != NULL)
+	{
+		mysql_free_result(g_mysql_res[handle]);
+		g_mysql_res[handle] = NULL;
+	}
+	mysql_close(&g_mysql[handle]);
+	g_mysql_reserved[handle] = false;
 }
 
 /* =================================================================
