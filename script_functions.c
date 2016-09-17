@@ -34,10 +34,10 @@ static void Scr_MySQL_Error(const char* fmt, ...)
 }
 
 /* =================================================================
- * Checks if function called after connection and query.
+ * Checks if function called after connection.
  * For use only inside gsc callbacks.
    ================================================================= */
-static void Scr_MySQL_CheckCall(int handle)
+static void Scr_MySQL_CheckConnection(int handle)
 {
 	/* Attempt to call without connection */
 	if (g_mysql_reserved[handle] == qfalse)
@@ -45,13 +45,29 @@ static void Scr_MySQL_CheckCall(int handle)
 		Plugin_Scr_Error("'mysql_real_connection' must be called before.");
 		return;
 	}
+}
 
+/* =================================================================
+ * Checks if function called after query.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static void Scr_MySQL_CheckQuery(int handle)
+{
 	/* Attempt to call without query */
 	if (mysql_res[handle] == NULL)
 	{
 		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
 	}
+}
+
+/* =================================================================
+ * Checks if function called after connection and query.
+ * For use only inside gsc callbacks.
+   ================================================================= */
+static void Scr_MySQL_CheckCall(int handle)
+{
+	Scr_MySQL_CheckConnection(handle);
+	Scr_MySQL_CheckQuery(handle);
 }
 
 /* =================================================================
@@ -236,34 +252,39 @@ void Scr_MySQL_Affected_Rows_f()
 /* Combine result output here? */
 void Scr_MySQL_Query_f()
 {
-	if (Plugin_Scr_GetNumParam() != 1)
+	if (Plugin_Scr_GetNumParam() != 2)
 	{
-		Plugin_Scr_Error("Usage: mysql_query(<string query>);");
+		Plugin_Scr_Error("Usage: mysql_query(<handle>, <string query>);");
 		return;
 	}
 
-	char* query = Plugin_Scr_GetString(0);
+	int handle = Scr_MySQL_GetHandle(0);
+	char* query = Plugin_Scr_GetString(1);
 
-	if (mysql_query(&mysql, query) == 0)
+	Scr_MySQL_CheckConnection(handle);
+
+	if (mysql_query(&g_mysql[handle], query) == 0)
 	{
-		if(mysql_res)
+		if(g_mysql_res[handle])
 		{
-			mysql_free_result(mysql_res);
-			mysql_res = NULL;
+			mysql_free_result(g_mysql_res[handle]);
+			g_mysql_res[handle] = NULL;
 		}
 
-		mysql_res = mysql_store_result(&mysql);
+		g_mysql_res[handle] = mysql_store_result(&g_mysql[handle]);
 
-		if(mysql_res == NULL)
+		if(g_mysql_res[handle] == NULL)
 		{
-			Scr_MySQL_Error("MySQL store error: (%d) %s", mysql_errno(&mysql),
-			                 mysql_error(&mysql));
+			Scr_MySQL_Error("MySQL store error: (%d) %s",
+			                mysql_errno(&g_mysql[handle]),
+			                mysql_error(&g_mysql[handle]));
 		}
 	}
 	else
 	{
-		Scr_MySQL_Error("MySQL query error: (%d) %s", mysql_errno(&mysql),
-		                 mysql_error(&mysql));
+		Scr_MySQL_Error("MySQL query error: (%d) %s",
+		                mysql_errno(&g_mysql[handle]),
+		                mysql_error(&g_mysql[handle]));
 	}
 }
 
