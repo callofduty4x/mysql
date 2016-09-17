@@ -1,10 +1,13 @@
-/* I don't want, but I have to! T-Max */
+/* Plugin includes */
 #include "../pinc.h"
-#ifndef WIN32
-#include "mysql/unix/include/mysql.h"
+
+/* OS-specific includes */
+#ifdef WIN32
+	#include "mysql/windows/include/mysql.h"
 #else
-#include "mysql/windows/include/mysql.h"
+	#include "mysql/unix/include/mysql.h"
 #endif
+
 #include "stdio.h"
 
 extern MYSQL mysql;
@@ -38,6 +41,12 @@ static void Scr_MySQL_Error(const char* fmt, ...)
    ================================================================= */
 void Scr_MySQL_Real_Connect_f()
 {
+	if (Plugin_Scr_GetNumParam() != 3)
+	{
+		Plugin_Scr_Error("Usage: mysql_real_connect(host, user, pass, port*);\n*port not required");
+		return;
+	}
+
 	// I want this. You may have more than one db to query against
 	char* host = Plugin_Scr_GetString(0);
 	char* user = Plugin_Scr_GetString(1);
@@ -45,11 +54,7 @@ void Scr_MySQL_Real_Connect_f()
 	char* db = Plugin_Scr_GetString(3);
 	int port = Plugin_Scr_GetInt(4);
 
-	if (Plugin_Scr_GetNumParam() != 3)
-	{
-		Plugin_Scr_Error("Usage: mysql_real_connect(host, user, pass, port*);\n*port not required");
-		return;
-	}
+
 
 #ifndef WIN32
 	/* On *Unix based systems, using "localhost" instead of 127.0.0.1
