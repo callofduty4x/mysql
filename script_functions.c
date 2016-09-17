@@ -402,6 +402,9 @@ void Scr_MySQL_Fetch_Rows_f()
 
 	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
 
+	/* Just rewind it back to start */
+	mysql_row_seek(g_mysql_res[handle], 0);
+
 	// do this no matter what.
 	Plugin_Scr_MakeArray();
 
