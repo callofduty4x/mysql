@@ -1,12 +1,16 @@
-cd bin
+cd bin/unix
 #!/bin/bash
-NAME='mysql'
+LIBNAME='cod4x_mysql.so'
 
-#Compiling: release
-echo `gcc -m32 -Wall -O1 -s -fvisibility=hidden -mtune=core2  -I../mysql/unix/include  -c ../*.c`
+echo Compiling...
+	gcc -m32 -O3 -Wall -Wattributes -fPIC -s -fvisibility=hidden -I../../mysql/unix/include  -c ../../*.c
 
-#Linking
-echo `gcc -m32 -s -shared -fvisibility=hidden -L../mysql/unix/lib -lmysqlclient -o $NAME''.so *.o`
+echo Linking...
+	gcc -m32 -O3 -s -shared -fvisibility=hidden -o $LIBNAME *.o ../../mysql/unix/lib/libmysqlclient.a
 
-#Cleaning up
-echo `rm *.o`
+echo Cleaning up...
+	rm *.o
+
+echo Done.
+
+cd ../..
