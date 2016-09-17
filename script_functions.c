@@ -344,21 +344,17 @@ void Scr_MySQL_Num_Fields_f()
 /* Todo: double check that. I didn't worked with mysql before */
 void Scr_MySQL_Fetch_Row_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_fetch_row();");
+		Plugin_Scr_Error("Usage: mysql_fetch_row(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	unsigned int col_count = mysql_num_fields(mysql_res);
-	MYSQL_ROW row = mysql_fetch_row(mysql_res);
+	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
+	MYSQL_ROW row = mysql_fetch_row(g_mysql_res[handle]);
 
 	if(row != NULL)
 	{
@@ -369,7 +365,7 @@ void Scr_MySQL_Fetch_Row_f()
 		{
 			/* A little help here? I don't actually understand data representation
 			   Integer must be integer, string - string, float - float */
-			MYSQL_FIELD *field = mysql_fetch_field(mysql_res);
+			MYSQL_FIELD *field = mysql_fetch_field(g_mysql_res[handle]);
 			if(field == NULL)
 			{
 				Scr_MySQL_Error("Houston, we got a problem: unnamed column!");
