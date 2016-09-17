@@ -1,5 +1,5 @@
 # mysql
-CoD4X MySQL support for GSC.
+CoD4X MySQL support for GSC. Continious connection up to 4 databases supported.
 
 # Contributors
 - [Sharpienero](https://github.com/Sharpienero/)
@@ -9,70 +9,75 @@ CoD4X MySQL support for GSC.
 # Script Docs 
 ### MySQL Related Functions
 
-#### CVARS
-##### `mysql_port`
-You can use `mysql_port` to define a default port to connect to. `mysql_real_connect` will still prioritise its own argument
-over the CVAR so leaving `mysql_real_connect`'s port empty will cause it to fall back to `mysql_port`. If `mysql_port` and
-`mysql_real_connect`'s ports are both empty then by default fall back onto mysqls default port `3306`
+#### `mysql_real_connect(<str host>, <str user>, <str passwd>, <str db>, [int port=3306])`
 
-Usage example: `set mysql_port 3306`
+Connects to a database, returns handle to database connection. If you want to connect to multiple databases, you can call this function up to 4 times. Do not forget to close connection with [mysql_close()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_closehandle). TODO: link here!
 
-#### `mysql_real_connect()`
+If "localhost" passed as `host`, for *NIX OS will be changed to "127.0.0.1".
 
-Connects to a database
+Usage example 1: `handle = mysql_real_connect("localhost", "cod4server", "12345678", "players");`
 
-Usage example `db = mysql_real_connect(host, user, pass, db, *port)`
+Usage example 2: `handle = mysql_real_connect("255.125.255.125", "usr1337", "87654321", "stats", 1337);`
 
-####### Note: *the port pram is optional
 
-###### Use 127.0.0.1 on unix, and the default port for mysql is 3306.
+#### `mysql_close(<handle>)`
 
-#### `mysql_close()`
+Close a MySQL connection. Handle must be valid.
 
-Close a MySQL Connection
+Usage example: `mysql_close(handle);`
 
-Usage example `mysql_close()`
+#### `mysql_query(<handle>, <str query>)`
 
-#### `mysql_errno()`
+Send a query to a database and saves the result for use in following functions. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306).
 
-Returns the MySQL Error number.
-Usage example: `error = mysql_errno()`
+Usage example: `mysql_query(handle, "SELECT * from users");`
 
-#### `mysql_error()`
+#### `mysql_num_rows(<handle>)`
 
-Returns the MySQL Error number.
-Usage example: `error = mysql_error()`
+Returns the amount of rows received after latest query. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
-#### `mysql_query()`
+Usage example: `rowsCount = mysql_num_rows(handle);`
 
-Send a query to a database and returns the result for use in the following functions:
+#### `mysql_affected_rows(<handle>)`
 
-Usage example:
-```cs
-query = mysql_query(<string query>)
+Returns the amount of affected rows after latest query. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
+
+Usage example: `rowsCount = mysql_affected_rows(handle);`
+
+#### `mysql_num_fields(<handle>)`
+
+Returns number of fields in latest query result. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
+
+Usage example: `fieldsCount = mysql_num_field(handle);`
+
+#### `mysql_fetch_row(<handle>)`
+
+Returns next row from latest query result as array. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
+
+Usage example: 
+```
+arr = mysql_fetch_row(handle);
+keys = getArrayKeys(arr);
+for(j = 0; j < keys.size; j++)
+{
+  iprintln("Key=" + keys[i] + ", value=" + arr[keys[i]]);
+}
 ```
 
-#### `mysql_rowcount()`
-Returns the amount of rows
+### Non-MySQL Related Functions
+#### `mysql_fetch_rows(<handle>)`
 
-Usage example: `count = mysql_rowcount()`
+Returns all rows from latest query result as 2-dimensional array even if something has been read before. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
-#### `mysql_affected_rows()`
-Returns the amount of affected rows
-
-Usage example: `count = mysql_affected_rows()`
-
-#### `mysql_num_field()`
-
-Returns number of fields
-
-Usage example = `count = mysql_num_field()`
-
-
-#### `mysql_fetch_rows()`
-
-Fetches and handles all rows from the `mysql_query()`
-
-Usage example = `data = mysql_fetch_rows()`
-
-Returns: This function will return two different data types depending on the field count. If the field count is one, `if( mysql_num_field(mysql) == 1 )`, then the function will return a key based array `data['field_name']`. If the `mysql_num_field()` is larger than one then it will return a 2D array. The first array being a numeric array and the second being a key based array `data[0]['field_name']`.
+Usage example: 
+```
+query = mysql_fetch_rows(handle);
+for(i = 0; i < query.size; i++)
+{
+  keys = getArrayKeys(query[i]);
+  for(j = 0; j < keys.size; j++)
+  {
+    iprintln("Row #" + i + ", Key=" + keys[i] + ", value=" + query[i][keys[i]]);
+  }
+}
+```
