@@ -320,20 +320,16 @@ void Scr_MySQL_Num_Rows_f()
    ================================================================= */
 void Scr_MySQL_Num_Fields_f()
 {
-	if (Plugin_Scr_GetNumParam() > 0)
+	if (Plugin_Scr_GetNumParam() != 1)
 	{
-		Plugin_Scr_Error("Usage: mysql_num_fields();");
+		Plugin_Scr_Error("Usage: mysql_num_fields(<handle>);");
 		return;
 	}
 
-	/* Attempt to call without query */
-	if (mysql_res == NULL)
-	{
-		Plugin_Scr_Error("'mysql_query' must be called before.");
-		return;
-	}
+	int handle = Scr_MySQL_GetHandle(0);
+	Scr_MySQL_CheckCall(handle);
 
-	Plugin_Scr_AddInt(mysql_num_fields(mysql_res));
+	Plugin_Scr_AddInt(mysql_num_fields(g_mysql_res[handle]));
 }
 
 /* =================================================================
