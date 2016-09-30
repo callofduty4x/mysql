@@ -15,8 +15,6 @@ extern MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
 extern MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
 extern qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
 
-//extern cvar_t *g_mysql_port;
-
 /* =================================================================
  * Shows script runtime error with crash.
  * For use only inside gsc callbacks.
@@ -101,8 +99,8 @@ void Scr_MySQL_Real_Connect_f()
 	if (argc != 4 && argc != 5)
 	{
 		Plugin_Scr_Error("Usage: handle = mysql_real_connect(<str host>, "
-						 "<str user>, <str passwd>, <str db>, "
-						 "[int port=3306]);");
+		                 "<str user>, <str passwd>, <str db>, "
+		                 "[int port=3306]);");
 		return;
 	}
 
@@ -117,7 +115,7 @@ void Scr_MySQL_Real_Connect_f()
 		if(port < 0 || port > 65535)
 		{
 			Plugin_Scr_ParamError(4, "Incorrect port: must be any integer "
-								  "from 0 to 65535");
+			                         "from 0 to 65535");
 			return;
 		}
 	}
@@ -145,24 +143,21 @@ void Scr_MySQL_Real_Connect_f()
 			return;
 		}
 	}
-	MYSQL* result = mysql_real_connect(&g_mysql[handle], host,
-									   user,
-	                                   pass,
-	                                   db,
-									   port, NULL, 0);
+	MYSQL* result = mysql_real_connect(&g_mysql[handle], host, user, pass,
+	                                   db, port, NULL, 0);
 
 	/* We don't want to crash the server, so we have a check to return nothing to prevent that */
 	if (result == NULL)
 	{
 		Scr_MySQL_Error("MySQL connect error: (%d) %s", mysql_errno(&g_mysql[handle]),
 		                 mysql_error(&g_mysql[handle]));
-		Plugin_Scr_AddUndefined(); // make sure we return undefined so GSC does not shit it's self.
 		return;
 	}
 	g_mysql_reserved[handle] = qtrue;
 
 	/* Would you like to reconnect if connection is dropped? */
-	qboolean reconnect = qtrue; // allows the database to reconnect on a new query etc.
+	/* Allows the database to reconnect on a new query etc. */
+	qboolean reconnect = qtrue;
 
 	/* Check to see if the mySQL server connection has dropped */
 	mysql_options(&g_mysql[handle], MYSQL_OPT_RECONNECT, &reconnect);
@@ -364,8 +359,9 @@ void Scr_MySQL_Fetch_Row_f()
 		mysql_field_seek(g_mysql_res[handle], 0);
 		for(i = 0; i < col_count; ++i)
 		{
-			/* A little help here? I don't actually understand data representation
-			   Integer must be integer, string - string, float - float */
+			/* A little help here? I don't actually understand data
+			 * representation. Integer must be integer, string - string,
+			 * float - float */
 			MYSQL_FIELD *field = mysql_fetch_field(g_mysql_res[handle]);
 			if(field == NULL)
 			{
@@ -405,51 +401,31 @@ void Scr_MySQL_Fetch_Rows_f()
 	/* Just rewind it back to start */
 	mysql_row_seek(g_mysql_res[handle], 0);
 
-	// do this no matter what.
+	/* Do this no matter what */
 	Plugin_Scr_MakeArray();
 
 	if(mysql_num_rows(g_mysql_res[handle]) != 0) /* Rows are exist */
 	{
 		int i = 0;
 
-		//int keyArrayIndex[col_count]; // NO, NO and... NO
-		//char* keyArray[col_count];    // When you do that, in this world one T-Max cries somewhere!
-		// First answer: http://stackoverflow.com/questions/5377411/non-const-declaration-of-array
-
-		/*int* keyArrayIndex = calloc(col_count, sizeof(int));
+		int* keyArrayIndex = calloc(col_count, sizeof(int));
 		MYSQL_FIELD* field;
 		while((field = mysql_fetch_field(g_mysql_res[handle])) != NULL)
 		{
 			keyArrayIndex[i] = Plugin_Scr_AllocString(field->name);
 			++i;
-		}*/
+		}
 
 		MYSQL_ROW rows;
-		/*if( row == 1 ) // only one row? custom handling to only return a single dimensional array.
+		while((rows = mysql_fetch_row(g_mysql_res[handle])) != NULL)
 		{
-			rows = mysql_fetch_row(g_mysql_res[handle]); // this will only give us one result.
+			Plugin_Scr_MakeArray();
 			for (i = 0; i < col_count; ++i) {
 				Plugin_Scr_AddString(rows[i]);
 				Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
 			}
+			Plugin_Scr_AddArray();
 		}
-		else
-		{*/
-			while((rows = mysql_fetch_row(g_mysql_res[handle])) != NULL)
-			{
-				Plugin_Scr_MakeArray();
-
-				mysql_field_seek(g_mysql_res[handle], 0);
-				for (i = 0; i < col_count; ++i)
-				{
-					Plugin_Scr_AddString(rows[i]);
-
-					MYSQL_FIELD* field = mysql_fetch_field(g_mysql_res[handle]);
-					Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
-				}
-				Plugin_Scr_AddArray();
-			}
-		//}
-		//free(keyArrayIndex);
+		free(keyArrayIndex);
 	}
 }
