@@ -143,6 +143,10 @@ void Scr_MySQL_Real_Connect_f()
 			return;
 		}
 	}
+	
+	/* Check to see if the mySQL server connection has dropped */
+	mysql_options(&g_mysql[handle], MYSQL_OPT_RECONNECT, &reconnect);
+	
 	MYSQL* result = mysql_real_connect(&g_mysql[handle], host, user, pass,
 	                                   db, port, NULL, 0);
 
@@ -158,9 +162,6 @@ void Scr_MySQL_Real_Connect_f()
 	/* Would you like to reconnect if connection is dropped? */
 	/* Allows the database to reconnect on a new query etc. */
 	qboolean reconnect = qtrue;
-
-	/* Check to see if the mySQL server connection has dropped */
-	mysql_options(&g_mysql[handle], MYSQL_OPT_RECONNECT, &reconnect);
 
 	Plugin_Scr_AddInt(handle);
 }
