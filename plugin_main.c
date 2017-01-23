@@ -88,3 +88,17 @@ PCL void OnTerminate()
 		++i;
 	}
 }
+
+PCL void OnExitLevel()
+{
+	int i = 0;
+	while(i < MYSQL_CONNECTION_COUNT)
+	{
+		if(g_mysql_res[i])
+			mysql_free_result(g_mysql_res[i]);
+		mysql_close(&g_mysql[i]);
+		g_mysql_res[i] = NULL;
+		g_mysql_reserved[i] = qfalse;
+		++i;
+	}
+}
