@@ -77,7 +77,7 @@ for(i = 0; i < query.size; i++)
   keys = getArrayKeys(query[i]);
   for(j = 0; j < keys.size; j++)
   {
-    iprintln("Row #" + i + ", Key=" + keys[i] + ", value=" + query[i][keys[i]]);
+    iprintln("Row #" + i + ", Key=" + keys[j] + ", value=" + query[i][keys[j]] + "\n");
   }
 }
 ```
