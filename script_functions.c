@@ -99,7 +99,7 @@ void Scr_MySQL_Real_Connect_f()
 	if (argc != 4 && argc != 5)
 	{
 		Plugin_Scr_Error("Usage: handle = mysql_real_connect(<str host>, "
-		                 "<str user>, <str passwd>, <str db>, "
+		                 "<str user>, <str passwd>, <str db or "">, "
 		                 "[int port=3306]);");
 		return;
 	}
@@ -120,14 +120,11 @@ void Scr_MySQL_Real_Connect_f()
 		}
 	}
 
-#ifndef WIN32
-	/* On *Unix based systems, using "localhost" instead of 127.0.0.1
-	 * causes a unix socket error, we replace it */
 	if (strcmp(host, "localhost") == 0)
-	{
 		host = "127.0.0.1";
-	}
-#endif
+
+	if (db[0] == '\0')
+		db = 0;
 
 	int handle = 0;
 	while(handle < MYSQL_CONNECTION_COUNT)
@@ -268,7 +265,9 @@ void Scr_MySQL_Query_f()
 
 		g_mysql_res[handle] = mysql_store_result(&g_mysql[handle]);
 
-		if(g_mysql_res[handle] == NULL)
+		/* Result may be NULL, with errno == 0. */
+		/* For example, try to create database. */
+		if(g_mysql_res[handle] == NULL && mysql_errno(&g_mysql[handle]))
 		{
 			Scr_MySQL_Error("MySQL store error: (%d) %s",
 			                mysql_errno(&g_mysql[handle]),
