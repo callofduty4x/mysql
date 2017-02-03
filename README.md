@@ -67,7 +67,7 @@ for(j = 0; j < keys.size; j++)
 ### Non-MySQL Related Functions
 #### `mysql_fetch_rows(<handle>)`
 
-Returns all rows from latest query result as 2-dimensional array even if something has been read before. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
+Returns rest rows from latest query result as 2-dimensional array. Array's keys are equal to column names and can be found with `getArrayKeys(<array>)`. An empty array returned if there's no more rows left. Must be called after [mysql_real_connect()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_real_connectstr-host-str-user-str-passwd-str-db-int-port3306) and [mysql_query()](https://github.com/callofduty4x/mysql/blob/master/README.md#mysql_queryhandle-str-query).
 
 Usage example: 
 ```
