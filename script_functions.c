@@ -398,16 +398,12 @@ void Scr_MySQL_Fetch_Rows_f()
 
 	unsigned int col_count = mysql_num_fields(g_mysql_res[handle]);
 
-	/* Just rewind it back to start */
-	mysql_row_seek(g_mysql_res[handle], 0);
-
 	/* Do this no matter what */
 	Plugin_Scr_MakeArray();
 
 	if(mysql_num_rows(g_mysql_res[handle]) != 0) /* Rows are exist */
 	{
 		int i = 0;
-
 		int* keyArrayIndex = calloc(col_count, sizeof(int));
 		MYSQL_FIELD* field;
 		while((field = mysql_fetch_field(g_mysql_res[handle])) != NULL)
