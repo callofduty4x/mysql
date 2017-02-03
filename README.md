@@ -60,7 +60,7 @@ arr = mysql_fetch_row(handle);
 keys = getArrayKeys(arr);
 for(j = 0; j < keys.size; j++)
 {
-  iprintln("Key=" + keys[i] + ", value=" + arr[keys[i]]);
+  iprintln("Key=" + keys[j] + ", value=" + arr[keys[j]]);
 }
 ```
 
