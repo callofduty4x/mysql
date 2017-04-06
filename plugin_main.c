@@ -14,7 +14,7 @@
 
 /* Plugin definitions */
 #define PLUGIN_VERSION_MAJOR 1
-#define PLUGIN_VERSION_MINOR 1
+#define PLUGIN_VERSION_MINOR 2
 
 #define PLUGIN_NAME "CoD4X MySQL Plugin"
 #define PLUGIN_DESCR PLUGIN_NAME" allows you to query information from " \
@@ -22,9 +22,9 @@
 #define PLUGIN_SHORT PLUGIN_NAME" by Sharpienero, MichaelHillcox, T-Max"
 
 /* Globals */
-MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
-MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
-qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
+PCL_LOCAL MYSQL g_mysql[MYSQL_CONNECTION_COUNT];
+PCL_LOCAL MYSQL_RES* g_mysql_res[MYSQL_CONNECTION_COUNT];
+PCL_LOCAL qboolean g_mysql_reserved[MYSQL_CONNECTION_COUNT];
 
 PCL void OnInfoRequest(pluginInfo_t *info)
 {

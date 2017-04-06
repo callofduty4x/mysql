@@ -1,4 +1,4 @@
-mysql.config
-mysql.creator*
-mysql.files
-mysql.includes
+obj/*
+!obj/dummy
+!bin/libcod4x_mysql.dll
+!bin/libcod4x_mysql.so
