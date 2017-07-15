@@ -2,3 +2,4 @@ obj/*
 !obj/dummy
 !bin/libcod4x_mysql.dll
 !bin/libcod4x_mysql.so
+.vscode/*
