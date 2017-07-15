@@ -518,7 +518,11 @@ void CMySQLPlugin::pluginError(const char *const Format_, ...) const
     char buffer[1024] = {'\0'};
     va_list va;
     va_start(va, Format_);
+#ifdef _WIN32
     _vsnprintf(buffer, sizeof(buffer), Format_, va);
+#else
+    vsnprintf(buffer, sizeof(buffer), Format_, va);
+#endif
     buffer[sizeof(buffer) - 1] = '\0';
     va_end(va);
 
