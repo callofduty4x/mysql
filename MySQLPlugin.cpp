@@ -372,7 +372,11 @@ void CMySQLPlugin::OnScript_Fetch_Row()
                 pluginError("Houston, we got a problem: unnamed column!");
                 return;
             }
-            Plugin_Scr_AddString(row[i]);
+            if(row[i] == NULL)
+                Plugin_Scr_AddUndefined();
+            else
+                Plugin_Scr_AddString(row[i]);
+                
             Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
         }
     }
