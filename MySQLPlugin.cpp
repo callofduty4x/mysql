@@ -377,7 +377,7 @@ void CMySQLPlugin::OnScript_Fetch_Row()
             else
                 Plugin_Scr_AddString(row[i]);
                 
-            Plugin_Scr_AddArrayKey(Plugin_Scr_AllocString(field->name));
+            Plugin_Scr_AddArrayKeys(Plugin_Scr_AllocString(field->name));
         }
     }
 }
@@ -429,7 +429,7 @@ void CMySQLPlugin::OnScript_Fetch_Rows()
         for (unsigned int i = 0; i < col_count; ++i)
         {
             Plugin_Scr_AddString(rows[i]);
-            Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
+            Plugin_Scr_AddArrayKeys(keyArrayIndex[i]);
         }
         Plugin_Scr_AddArray();
     }

@@ -33,7 +33,7 @@ OBJECTS=$(C_OBJECTS) $(CPP_OBJECTS)
 
 TARGET_OS = $(shell $(CC) -dumpmachine)
 
-ifeq      ($(TARGET_OS),mingw32)
+ifeq ($(OS),Windows_NT)
 INCLUDEDIR=$(INCLUDEDIR_WIN32)
 ADDITIONALLIBS=$(ADDITIONALLIBS_WIN32)
 else ifeq ($(TARGET_OS),cygwin)
@@ -47,7 +47,7 @@ endif
 ############
 # Recipies #
 ############
-ifeq      ($(TARGET_OS),mingw32)
+ifeq ($(OS),Windows_NT)
 all: win32
 else
 all: unix
@@ -59,7 +59,7 @@ obj/%.o: %.cpp
 	@echo $(CC)    "$^ -> $@"
 	@$(CC) $(CFLAGS) $(INCLUDEDIR) -o $@ -c $<
 
-ifeq      ($(TARGET_OS),mingw32)
+ifeq ($(OS),Windows_NT)
 clean: clean_win32
 else
 clean: clean_unix
@@ -74,7 +74,8 @@ win32: bin/lib$(PLUGIN_NAME).dll
 
 bin/lib$(PLUGIN_NAME).dll: $(OBJECTS)
 	@echo $(CC)    "$@"
-	@$(CC) -shared $(CFLAGS) -o $@ $^ ../libcom_plugin.a $(ADDITIONALLIBS)
+	@echo here
+	@$(CC) -shared $(CFLAGS) -o $@ $^ -L.. -lcom_plugin $(ADDITIONALLIBS)
 
 clean_win32:
 	@del $(subst /,\\,$(OBJECTS))
