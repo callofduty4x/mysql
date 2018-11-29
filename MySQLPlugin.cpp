@@ -223,7 +223,6 @@ void CMySQLPlugin::OnScript_Affected_Rows()
 
     int idx = getHandleIndexForScriptArg(0);
     checkConnection(idx);
-    checkQuery(idx);
 
     Plugin_Scr_AddInt(mysql_affected_rows(&m_MySQL[idx]));
 }
@@ -428,7 +427,11 @@ void CMySQLPlugin::OnScript_Fetch_Rows()
         Plugin_Scr_MakeArray();
         for (unsigned int i = 0; i < col_count; ++i)
         {
-            Plugin_Scr_AddString(rows[i]);
+            if(rows[i] == NULL)
+                Plugin_Scr_AddUndefined();
+            else
+                Plugin_Scr_AddString(rows[i]);
+            
             Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
         }
         Plugin_Scr_AddArray();
