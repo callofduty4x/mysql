@@ -223,6 +223,7 @@ void CMySQLPlugin::OnScript_Affected_Rows()
 
     int idx = getHandleIndexForScriptArg(0);
     checkConnection(idx);
+    checkQuery(idx);
 
     Plugin_Scr_AddInt(mysql_affected_rows(&m_MySQL[idx]));
 }
