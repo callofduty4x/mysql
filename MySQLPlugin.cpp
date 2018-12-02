@@ -29,6 +29,7 @@ CMySQLPlugin::CMySQLPlugin()
         memset(&m_MySQL[i], 0, sizeof(MYSQL));
         m_MySQLResults[i] = NULL;
         m_MySQLInUse[i] = false;
+        m_MYSQLErrNo[i] = -1;
     }
 }
 /////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +69,7 @@ void CMySQLPlugin::Clear()
         // Clean up data.
         m_MySQLResults[i] = NULL;
         m_MySQLInUse[i] = false;
+        m_MYSQLErrNo[i] = -1;
     }
 }
 /////////////////////////////////////////////////////////////////////////////////
@@ -158,6 +160,7 @@ void CMySQLPlugin::OnScript_Real_Connect()
         return;
     }
     m_MySQLInUse[i] = true;
+    m_MYSQLErrNo[i] = -1;
 
     Plugin_Scr_AddInt(i);
 }
@@ -192,6 +195,7 @@ void CMySQLPlugin::OnScript_Close()
     }
     mysql_close(&m_MySQL[idx]);
     m_MySQLInUse[idx] = false;
+    m_MYSQLErrNo[idx] = -1;
 }
 /////////////////////////////////////////////////////////////////////////////////
 /* =================================================================
@@ -269,11 +273,11 @@ void CMySQLPlugin::OnScript_Query()
         /* Result may be NULL, with errno == 0. */
         /* For example, try to create database. */
         /* Try fix something weird and call mysql_errno once. */
-        unsigned int err = mysql_errno(&m_MySQL[idx]);
-        if (m_MySQLResults[idx] == NULL && err != 0)
+        m_MYSQLErrNo[idx] = mysql_errno(&m_MySQL[idx]);
+        if (m_MySQLResults[idx] == NULL && m_MYSQLErrNo[idx] != 0)
         {
             pluginError("MySQL store error: (%d) %s",
-                        err,
+                        m_MYSQLErrNo[idx],
                         mysql_error(&m_MySQL[idx]));
         }
     }
@@ -428,7 +432,11 @@ void CMySQLPlugin::OnScript_Fetch_Rows()
         Plugin_Scr_MakeArray();
         for (unsigned int i = 0; i < col_count; ++i)
         {
-            Plugin_Scr_AddString(rows[i]);
+            if(rows[i] == NULL)
+                Plugin_Scr_AddUndefined();
+            else
+                Plugin_Scr_AddString(rows[i]);
+            
             Plugin_Scr_AddArrayKey(keyArrayIndex[i]);
         }
         Plugin_Scr_AddArray();
@@ -513,7 +521,7 @@ void CMySQLPlugin::checkQuery(const int HandleIndex_) const
     }
 
     // Attempt to call without query
-    if (m_MySQLResults[HandleIndex_] == NULL)
+    if (m_MySQLResults[HandleIndex_] == NULL && m_MYSQLErrNo[HandleIndex_] != 0)
         Plugin_Scr_Error("'mysql_query' must be called before.");
 }
 /////////////////////////////////////////////////////////////////////////////////
