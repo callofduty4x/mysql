@@ -58,6 +58,7 @@ private:
     MYSQL m_MySQL[MYSQL_CONNECTION_COUNT];
     MYSQL_RES* m_MySQLResults[MYSQL_CONNECTION_COUNT];
     bool m_MySQLInUse[MYSQL_CONNECTION_COUNT];
+    unsigned int m_MYSQLErrNo[MYSQL_CONNECTION_COUNT];
 };
 
 void InitPlugin();
